@@ -1,0 +1,18 @@
+{
+    "appDescription": "",
+    "icon": "images/app-icon.png",
+    "main": "index.html",
+    "title": "signage",
+    "type": "web",
+    "resolution": "1920x1080",
+    "version": "1.0.0",
+    "splashBackground": "images/bg4.jpg",
+    "transparent":false,
+    "handlesRelaunch":false,
+    "bgColor": "#000000",
+    "vendor": "Total VDO Solution.",
+    "largeIcon": "images/app-icon.png",
+    "iconColor": "#000000",
+    "id": "com.signage.app",
+    "disableBackHistoryAPI":true
+}

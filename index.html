@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Signage | Menu Online</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script src="./js/main.js"></script>
+  <script type="text/javascript" src="webOSTVjs-1.2.4/webOSTV.js"></script>
+</head>
+
+<body>
+  <div class="landing-page" id="landingPage">
+    <div id="button-div" style="height: 85px;">
+      <button class="button-cl" id="reset">RESET</button>
+      <button class="button-cl" id="close">CLOSE</button>
+    </div>
+    <div class="screen-id" id="screen-div-id"> <span id="screen-id"></span></div>
+    <div id="internet-status" class="net"></div>
+    <div class="server" id="">
+      <span id="server-status"></span>
+    </div>
+
+
+    <div class="image-slider-div" id="image-slider">
+      <img id="slider-image" src="" />
+    </div>
+    <div class="image-slider-div" id="custom-layout">
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+
+  <script>
+
+    function appendChildDiv(parentId, x, y, width, height, color, childId) {
+      var parentDiv = document.getElementById(parentId);
+      var childDiv = document.createElement('div');
+      childDiv.id = childId;
+      childDiv.style.position = 'absolute';
+      childDiv.style.top = y + 'px';
+      childDiv.style.left = x + 'px';
+      childDiv.style.width = width + 'px';
+      childDiv.style.height = height + 'px';
+      childDiv.style.backgroundColor = color;
+      parentDiv.appendChild(childDiv);
+    }
+    function displayMediaPlaylist(arr, divId) {
+      var currentIndex = 0;
+      var container = document.getElementById(divId);
+      function showNextMedia() {
+        var mediaItem = arr[currentIndex];
+        var mediaElement;
+        if (mediaItem.type === "VIDEO") {
+          mediaElement = document.createElement('video');
+          mediaElement.src = mediaItem.imageurl;
+          mediaElement.style.width = '99%';
+          mediaElement.style.height = '99%';
+          mediaElement.style.zIndex = 5;
+          mediaElement.muted = true;
+          mediaElement.controls = false;
+          mediaElement.autoplay = true;
+          mediaElement.loop = true;
+        } else if (mediaItem.type === "IMAGE") {
+          mediaElement = new Image();
+          mediaElement.src = mediaItem.imageurl;
+          mediaElement.style.objectFit = 'contain';
+          mediaElement.style.width = '99%';
+          mediaElement.style.height = '99%';
+          mediaElement.style.zIndex = 5;
+        }
+        container.innerHTML = '';
+        container.appendChild(mediaElement);
+
+        if (arr.length === 1) {
+          setTimeout(showNextMedia, mediaItem.time * 1000);
+
+        } else {
+          if (currentIndex == arr.length - 1) {
+            currentIndex = 0;
+          } else {
+            currentIndex = currentIndex + 1;
+          }
+          setTimeout(showNextMedia, mediaItem.time * 1000);
+
+        }
+      }
+      showNextMedia();
+    }
+
+    function makeVideoImagePlaylist(arr) {
+      var ark = [];
+      arr.forEach(function (item) {
+        var tmp = {};
+        tmp['imageurl'] = encodeURI(item.original_url);
+        tmp['time'] = item.time;
+        tmp['type'] = item.type;
+        ark.push(tmp);
+      });
+      return ark;
+    }
+
+    function checkIsPrevId() {
+      var OldData = localStorage.getItem("profile");
+      if (OldData) {
+        return true;
+      } else {
+        return false;
+      }
+
+    }
+
+    function hideOterDetails() {
+      document.getElementById("button-div").style.display = "none";
+      document.getElementById("internet-status").style.display = "none";
+      document.getElementById("screen-div-id").style.display = "none";
+
+    }
+
+
+    function doSocket(SCREEN_ID) {
+      console.log(SCREEN_ID);
+      const baseurl =  "https://signage.mycircle.net";
+      const BASE_URL = "https://react.tjcg.in";
+      const socket = io(baseurl, {
+        path: "/socket.live",
+        query: {
+          screenNo: SCREEN_ID,
+        },
+        transports: ["websocket"],
+      });
+      document.getElementById("screen-id").textContent = SCREEN_ID;
+      socket.on("connect", function (response) {
+        console.log("Socket connected to server");
+       // document.getElementById("server-status").textContent = "Already Paired ,ready to recieve content ";
+      });
+      socket.on("screen_data", function (data) {
+        document.getElementById("server-status").textContent = "Paired and ready to recieve content ";
+        console.log("GET::: screen_data", data);
+        localStorage.setItem("profile", JSON.stringify(data));
+      });
+      socket.on("use_our_template_data", function (data) {
+        console.log("GET:::use_our_template_data", data);
+      });
+      socket.on("playlist_data", function (data) {
+        console.log("GET::: playlist_data", data);
+        stopSlider();
+        startSlider(makeSliderPlaylist(data.playlist));
+        hideOterDetails();
+      });
+      socket.on("custom_layout_data", function (data_) {
+        console.log("GET::: custom_layout_data", data_);
+        hideOterDetails();
+        for (var k = 0; k < data_.layout.length; k++) {
+          var SCREEN_WIDTH = 1920, SCREEN_HEIGHT = 1080;
+          var X = SCREEN_WIDTH * data_.layout[k].x / 500
+          var WIDTH = SCREEN_WIDTH * data_.layout[k].width / 500
+          Y = SCREEN_HEIGHT * data_.layout[k].y / 350
+          var HEIGHT = SCREEN_HEIGHT * data_.layout[k].height / 350
+          appendChildDiv("custom-layout", X, Y, WIDTH, HEIGHT, data_.layout[k].fill, "child" + k);
+        }
+
+        for (var w = 0; w < data_.layout.length; w++) {
+          console.log(makeVideoImagePlaylist(data_.layout[w].media));
+          displayMediaPlaylist(makeVideoImagePlaylist(data_.layout[w].media), "child" + w);
+        }
+
+      });
+      socket.on("CHECK_ONLINE_STATUS", function (data) {
+        console.log("GET::: CHECK_ONLINE_STATUS", data);
+      });
+      socket.on("CLOSE_SCREEN_APP", function (data) {
+        console.log("GET::: CLOSE_SCREEN_APP", data);
+      });
+      socket.on("UPGRADE_SCREEN_APP", function (data) {
+        console.log("GET::: UPGRADE_SCREEN_APP", data);
+      });
+      socket.on("ROTATE_SCREEN", function (data) {
+        console.log("GET::: ROTATE_SCREEN", data);
+      });
+      socket.on("RESET_SCREEN_APP", function (data) {
+        console.log("GET::: RESET_SCREEN_APP", data);
+      });
+      socket.on("RELOAD_PLAYER_APP", function (data) {
+        launchApp();
+        console.log("GET::: RELOAD_PLAYER_APP", data);
+      });
+      socket.on("TAKE_SCREEN_SNAP_SHOT", function (data) {
+        console.log("GET::: TAKE_SCREEN_SNAP_SHOT", data);
+      });
+      socket.on("USER_REBOOT_APP", function (data) {
+        localStorage.clear();
+            setTimeout(() => {
+              launchApp();
+            }, 2000); 
+        console.log("GET::: USER_REBOOT_APP", data);
+      });
+      socket.on("SHUTDOWN_SYSTEM", function (data) {
+        console.log("GET::: SHUTDOWN_SYSTEM", data);
+      });
+      socket.on("LAUNCH_SCREEN_APP", function (data) {
+        console.log("GET::: LAUNCH_SCREEN_APP", data);
+      });
+      socket.on("UPLOAD_NEW_APK_FILE", function (data) {
+        console.log("GET::: UPLOAD_NEW_APK_FILE", data);
+      });
+      socket.on("UPLOAD_ROOT_APP_FILE", function (data) {
+        console.log("GET::: UPLOAD_ROOT_APP_FILE", data);
+      });
+      socket.on("UPLOAD_COMMEND", function (data) {
+        console.log("GET::: UPLOAD_COMMEND", data);
+      });
+      socket.on("ADD_EDIT_TV_SCHEDULER", function (data) {
+        console.log("GET::: ADD_EDIT_TV_SCHEDULER", data);
+      });
+      socket.on("disconnect", function (data) {
+        console.log("Socket disconnected", data);
+        document.getElementById("server-status").textContent =
+          "Socket disconnected from server";
+      });
+      socket.on("use_our_template_data", function (data) {
+        showsingleImage( encodeURI(data.image_url));
+        console.log("GET::: use_our_template_data", data);
+      });
+      socket.on("update_media_in_screen", function (data) {
+        console.log("GET::: update_media_in_screen", data);
+      });
+    }
+    window.onload = function () {
+      document.getElementById("image-slider").style.display = "none";
+      document.getElementById("internet-status").style.display = 'none';
+      document.body.addEventListener('keydown', function (event) {
+        console.log(event.keyCode);
+        if (event.keyCode == 39) {
+          document.getElementById('reset').focus();
+        } else if (event.keyCode == 37) {
+          document.getElementById('close').focus();
+        } else if (event.keyCode == 13) {
+          if (document.activeElement.getAttribute('id') == 'reset') {
+            localStorage.clear();
+            setTimeout(() => {
+              launchApp();
+            }, 2000);          
+           
+          } else if (document.activeElement.getAttribute('id') == 'close') {
+            console.log('close');
+            window.close();
+          }
+        }
+      });
+
+      const SCREEN_ID = "999036";
+      if (checkIsPrevId()) {
+        console.log('profile found');
+        var OldData = localStorage.getItem("profile");
+        if (OldData) {
+          var profileObject = JSON.parse(OldData);
+          document.getElementById("screen-id").textContent = profileObject.screenNumber;
+          doSocket(profileObject.screenNumber);
+        }
+      } else {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            var response = JSON.parse(this.responseText);
+            doSocket(response.screenNumber);
+          }
+        };
+        xhttp.open("GET", "https://react.tjcg.in/api/generate-screen-id?number=000000", true);
+        xhttp.send();
+      }
+      updateNetworkStatus();
+      window.addEventListener("online", updateNetworkStatus);
+      window.addEventListener("offline", updateNetworkStatus);
+
+      function launchApp(appId) {
+        try {
+          tizen.application.launch('oqhtpHf3be.signage', function () {
+            console.log('app launched');
+          }, function () {
+            // tizen.application.getCurrentApplication().exit();
+          });
+        } catch (e) {
+          console.log(e);
+        }
+
+      }
+
+    }
+  </script>
+</body>
+
+</html>
