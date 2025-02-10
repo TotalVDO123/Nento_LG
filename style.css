@@ -50,7 +50,7 @@ body {
 .server {
   color: white;
   font-size: 50px;
-  font-weight: 700;
+  font-weight: 700 !important;
   text-align: center;
   animation: blink 1s infinite;
 }
@@ -63,7 +63,7 @@ body {
     font-weight: 800;
     text-align: end;
     margin-top: 25px;
-    margin-right: 25px;
+    margin-right: 46px;
 }
 
 .button-cl{
@@ -94,7 +94,10 @@ body {
   padding: 10px 10px 10px 10px;
 }
 
-
+/* button.wifi {
+  position: absolute;
+  right: 107px;
+} */
 
 
 

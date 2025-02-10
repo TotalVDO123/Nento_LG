@@ -7,3 +7,13 @@ h1 {
 }
 
 .canvas { width:960px;height:auto;margin-left:450px;margin-right:450px;background:#fff;}
+
+/* .wifi{
+    position: absolute;
+    right:107px;
+} */
+
+button#wifi {
+    position: absolute;
+    right: 107px;
+}
